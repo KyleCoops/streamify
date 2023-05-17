@@ -56,6 +56,7 @@ resource "google_compute_instance" "kafka_vm_instance" {
 resource "google_compute_instance" "airflow_vm_instance" {
   name                      = "streamify-airflow-instance"
   machine_type              = "e2-standard-4"
+  tags                      = ["airflow"]
   allow_stopping_for_update = true
 
   boot_disk {
@@ -70,6 +71,21 @@ resource "google_compute_instance" "airflow_vm_instance" {
     access_config {
     }
   }
+}
+
+resource "google_compute_firewall" "port_8080" {
+  project     = var.project
+  name        = "airflow-port-8080"
+  network     = var.network
+  description = "Opens port 8080 for Airflow instance"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8080"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["airflow"]
 }
 
 resource "google_storage_bucket" "bucket" {
