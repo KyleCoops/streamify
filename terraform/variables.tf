@@ -5,13 +5,13 @@ variable "project" {
 
 variable "region" {
   description = "Your project region"
-  default     = "us-central1"
+  default     = "europe-west3"
   type        = string
 }
 
 variable "zone" {
   description = "Your project zone"
-  default     = "us-central1-a"
+  default     = "europe-west3-c"
   type        = string
 }
 
@@ -47,5 +47,6 @@ variable "prod_bq_dataset" {
 
 variable "bucket" {
   description = "The name of your bucket. This should be unique across GCP"
+  default = "streamify-bucket"
   type        = string
 }
