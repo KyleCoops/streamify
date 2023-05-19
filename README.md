@@ -101,8 +101,36 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ```bash
   terraform apply
   ```
+### SSH Access
+- Create an ssh key in your local system if one does not exists.
+- Add the public key (`.pub`) to your [project](https://cloud.google.com/compute/docs/connect/add-ssh-keys#expandable-2) - [Guide]
+- Create a config file in your `.ssh` folder
+  ```
+  touch ~/.ssh/config
+  ```
+- Copy the following snippet and replace fill in the External IP, Username and path to the ssh private key.
 
-- (Extra) SSH into your VMs, Forward Ports - [Setup](setup/ssh.md)
+    ```
+    Host streamify-kafka
+        HostName <External IP Address>
+        User <username>
+        IdentityFile </home/username/.ssh/keyfile>
+
+    Host streamify-spark
+        HostName <External IP Address Of Master Node>
+        User <username>
+        IdentityFile </home/username/.ssh/keyfile>
+
+    Host streamify-airflow
+        HostName <External IP Address>
+        User <username>
+        IdentityFile </home/username/.ssh/keyfile>
+    ```
+- SSH into the servers using the Host field specified in the config file. For example:
+    ```
+    ssh streamify-kafka
+    ```
+
 - Setup Kafka Compute Instance and start sending messages from Eventsim - [Setup](setup/kafka.md)
 - Setup Spark Cluster for stream processing - [Setup](setup/spark.md)
 - Setup Airflow on Compute Instance to trigger the hourly data pipeline - [Setup](setup/airflow.md)
