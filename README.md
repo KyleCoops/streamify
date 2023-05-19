@@ -161,7 +161,36 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ```
 
 #### Airflow
+- Establish SSH connection
 
+  ```bash
+  ssh streamify-airflow
+  ```
+- Clone git repo and cd into Kafka folder
+  ```bash
+  git clone https://github.com/kyle1cooper/streamify.git && cd streamify/kafka
+  ```
+- Install anaconda, docker & docker-compose.
+  ```
+  bash ~/streamify/scripts/vm_setup.sh && exec newgrp docker
+  ```
+- Move the service account json file from local to the VM machine in `~/.google/credentials/` directory.  Make sure it is named as `google_credentials.json`  else the dags will fail!
+
+##### DAGs
+
+The setup has two dags
+- `load_songs_dag`
+  - Trigger first and only once to load a onetime song file into BigQuery
+- `streamify_dag`
+  - Trigger after `load_songs_dag` to make sure the songs table table is available for the transformations
+  - This dag will run hourly at the 5th minute and perform transformations to create the dimensions and fact.
+
+  - DAG Flow -
+    - We first create an external table for the data that was received in the past hour.
+    - We then create an empty table to which our hourly data will be appended. Usually, this will only ever run in the first run.
+    - Then we insert or append the hourly data, into the table.
+    - And then, delete the external table.
+    - Finally, run the dbt transformation, to create our dimensions and facts.
 
 
 ### Run the stack
@@ -247,6 +276,27 @@ Set the evironment variables
   - listen_events
   - page_view_events
   - auth_events
+
+#### Airflow
+
+Set the evironment variables (same as Terraform values)-
+
+  - GCP Project ID
+
+  - Cloud Storage Bucket Name
+
+    ```bash
+    export GCP_PROJECT_ID=project-id
+    export GCP_GCS_BUCKET=bucket-name
+    ```
+
+    **Note**: You will have to setup these env vars every time you create a new shell session.
+
+- Start Airflow. (This shall take a few good minutes, grab a coffee!)
+
+  ```bash
+  bash ~/streamify/scripts/airflow_startup.sh && cd ~/streamify/airflow
+  ```
 
 
 ### Debug
