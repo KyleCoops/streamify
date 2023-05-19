@@ -52,10 +52,6 @@ This project is built in a manner that a basic level of knowledge for docker, te
 
 **WARNING: You will be charged for all the infrastructre setup. If you create a new account on Google Cloud you can take advantage of the free $300 credits you recieve.**
 
-- Google Cloud Platform. 
-  - [GCP Account and Access Setup](setup/gcp.md)
-- Terraform
-  - [Setup Terraform](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/week_1_basics_n_setup/1_terraform_gcp/windows.md#terraform)
 
 
 #### Google Cloud 
@@ -86,8 +82,26 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ```
 
 ### Terraform
+- Initiate terraform and download the required dependencies-
+  ```
+  terraform init
+  ```
+- Set the follow variables in the variables.tf file
+  * project
+  * region
+  * zone 
 
-- Procure infra on GCP with Terraform - [Setup](setup/terraform.md)
+- View the Terraform plan
+
+  ```
+  terraform plan
+  ```
+- Apply the infra. **Note** - Billing will start as soon as the apply is complete.
+
+  ```bash
+  terraform apply
+  ```
+
 - (Extra) SSH into your VMs, Forward Ports - [Setup](setup/ssh.md)
 - Setup Kafka Compute Instance and start sending messages from Eventsim - [Setup](setup/kafka.md)
 - Setup Spark Cluster for stream processing - [Setup](setup/spark.md)
