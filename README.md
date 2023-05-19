@@ -148,29 +148,43 @@ This project is built in a manner that a basic level of knowledge for docker, te
   bash ~/streamify/scripts/vm_setup.sh && exec newgrp docker
   ```
 
-### Spark 
-- Setup Kafka Compute Instance and start sending messages from Eventsim - [Setup](setup/kafka.md)
-- Setup Spark Cluster for stream processing - [Setup](setup/spark.md)
-- Setup Airflow on Compute Instance to trigger the hourly data pipeline - [Setup](setup/airflow.md)
+#### Spark 
+- Establish SSH connection to the **master node** Spark VM.
+
+  ```bash
+  ssh streamify-spark
+  
+- Clone git repo
+
+  ```bash
+  git clone https://github.com/ankurchavda/streamify.git && cd streamify/spark_streaming
+  ```
+
+#### Airflow
+
 
 
 ### Run the stack
+The stack needs to be run in the following order:
+1. Kafka
+2. Eventsim
+3. Spark
+4. Airflow
 
 #### Kafka
 
-- Set the evironment variables -
-
-  - External IP of the Kafka VM
-
-    ```bash
-    export KAFKA_ADDRESS=IP.ADD.RE.SS
+- Set the evironment variables
+  - ssh to the kafka vm
+  - Set environemental variables
+    ```
+    export KAFKA_ADDRESS=IP ADDRESS
     ```
 
      **Note**: You will have to setup these env vars every time you create a new shell session. Or if you stop/start your VM
 
 - Start Kafka 
 
-  ```bash
+  ```
   cd ~/streamify/kafka && \
   docker-compose build && \
   docker-compose up 
@@ -206,6 +220,33 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ![topics](../images/topics.png)
 
 #### Spark
+
+Set the evironment variables 
+  - External IP of the Kafka VM so that spark can connect to it
+  - Name of your GCS bucket. (What you gave during the terraform setup)
+
+    ```bash
+    export KAFKA_ADDRESS=IP.ADD.RE.SS
+    export GCP_GCS_BUCKET=bucket-name
+    ```
+
+     **Note**: You will have to setup these env vars every time you create a new shell session. Or if you stop/start your cluster
+
+- Start reading messages
+
+  ```bash
+  spark-submit \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 \
+  stream_all_events.py
+  ```
+
+- If all went right, you should see new `parquet` files in your bucket! That is Spark writing a file every two minutes for each topic.
+
+- Topics we are reading from
+
+  - listen_events
+  - page_view_events
+  - auth_events
 
 
 ### Debug
