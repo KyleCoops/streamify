@@ -108,7 +108,7 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ```
   touch ~/.ssh/config
   ```
-- Copy the following snippet and replace fill in the External IP, Username and path to the ssh private key.
+- Copy the following snippet and replace fill in the External IP, Username and path to the ssh private key. Note: The IP of the VMs will change if they are restarted and the below values will have to be replaced with the new IPs.
 
     ```
     Host streamify-kafka
@@ -130,13 +130,83 @@ This project is built in a manner that a basic level of knowledge for docker, te
     ```
     ssh streamify-kafka
     ```
+### Kafka
 
+- SSH into the kafka VM.
+  ```
+  ssh streamify-kafka
+  ```
+
+- Clone git repo and cd into Kafka folder
+
+  ```bash
+  git clone https://github.com/kyle1cooper/streamify.git && cd streamify/kafka
+  ```
+
+- Install anaconda, docker & docker-compose.
+  ```
+  bash ~/streamify/scripts/vm_setup.sh && exec newgrp docker
+  ```
+
+### Spark 
 - Setup Kafka Compute Instance and start sending messages from Eventsim - [Setup](setup/kafka.md)
 - Setup Spark Cluster for stream processing - [Setup](setup/spark.md)
 - Setup Airflow on Compute Instance to trigger the hourly data pipeline - [Setup](setup/airflow.md)
 
 
 ### Run the stack
+
+#### Kafka
+
+- Set the evironment variables -
+
+  - External IP of the Kafka VM
+
+    ```bash
+    export KAFKA_ADDRESS=IP.ADD.RE.SS
+    ```
+
+     **Note**: You will have to setup these env vars every time you create a new shell session. Or if you stop/start your VM
+
+- Start Kafka 
+
+  ```bash
+  cd ~/streamify/kafka && \
+  docker-compose build && \
+  docker-compose up 
+  ```
+
+  **Note**: Sometimes the `broker` & `schema-registry` containers die during startup. You should just stop all the containers with `docker-compose down` and then rerun `docker-compose up`.
+
+#### Eventsim
+
+- Open another terminal session for the Kafka VM and start sending messages to your Kafka broker with Eventsim
+
+  ```bash
+  bash ~/streamify/scripts/eventsim_startup.sh
+  ```
+
+  This will start creating events for 1 Million users spread out from the current time to the next 24 hours. 
+  The container will run in detached mode. Follow the logs to see the progress.
+
+- To follow the logs
+
+  ```bash
+  docker logs --follow million_events
+  ```
+
+- The messages should start flowing-in in a few minutes.
+  
+- You should see four topics -
+
+  - listen_events
+  - page_view_events
+  - auth_events
+  - status_change_events
+  ![topics](../images/topics.png)
+
+#### Spark
+
 
 ### Debug
 
