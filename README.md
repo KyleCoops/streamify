@@ -41,7 +41,7 @@ This project is built in a manner that a basic level of knowledge for docker, te
 
 **WARNING: You will be charged for all the infrastructre setup. If you create a new account on Google Cloud you can take advantage of the free $300 credits you recieve.**
 
-#### Google Cloud 
+### Google Cloud 
 
 1. Create an account with your Google email. 
 2. Setup a [project](https://console.cloud.google.com/), eg. "Streamify".
@@ -59,17 +59,17 @@ This project is built in a manner that a basic level of knowledge for docker, te
   Please note that the above list is not exhaustive and additional APIs might need to be enabled.
 
 4. Setup the google cloud [SDK](https://cloud.google.com/sdk/docs/quickstart) on your local setup
-5. Set environment variable to point to your downloaded GCP keys:
+5. Set the environment variable to point to your downloaded GCP keys:
   ```
    export GOOGLE_APPLICATION_CREDENTIALS="<path/to/your/google_credentials.json>"
   ```
-6. Refresh token/session, and verify authentication
+6. Refresh the token/session, and verify authentication
   ```
   gcloud auth application-default login
   ```
 
 ### Terraform
-- Initiate terraform and download the required dependencies-
+- Initiate terraform and download the required dependencies.
   ```
   terraform init
   ```
@@ -85,12 +85,12 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ```
 - Apply the infra. **Note** - Billing will start as soon as the apply is complete.
 
-  ```bash
+  ```
   terraform apply
   ```
 ### SSH Access
 - Create an ssh key in your local system if one does not exists.
-- Add the public key (`.pub`) to your [project](https://cloud.google.com/compute/docs/connect/add-ssh-keys#expandable-2) - [Guide]
+- Add the public key (`.pub`) to your [project](https://cloud.google.com/compute/docs/connect/add-ssh-keys#expandable-2).
 - Create a config file in your `.ssh` folder
   ```
   touch ~/.ssh/config
@@ -124,38 +124,44 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ssh streamify-kafka
   ```
 
-- Clone git repo and cd into Kafka folder
+- Clone the git repo
 
   ```bash
-  git clone https://github.com/kyle1cooper/streamify.git && cd streamify/kafka
+  git clone https://github.com/kyle1cooper/streamify.git
   ```
 
 - Install anaconda, docker & docker-compose.
   ```
   bash ~/streamify/scripts/vm_setup.sh && exec newgrp docker
   ```
-
-#### Spark 
+- Set the environemental variables
+    ```
+    export KAFKA_ADDRESS=IP ADDRESS
+    ```
+- Build the docker images
+  ```
+  docker-compose build
+  ```
+### Spark 
 - Establish SSH connection to the **master node** Spark VM.
 
-  ```bash
+  ```
   ssh streamify-spark
   
-- Clone git repo
+- Clone the git repo
 
-  ```bash
-  git clone https://github.com/ankurchavda/streamify.git && cd streamify/spark_streaming
   ```
+  git clone https://github.com/ankurchavda/streamify.git
+  ```
+### Airflow
+- SSH into the airflow VM.
 
-#### Airflow
-- Establish SSH connection
-
-  ```bash
+  ```
   ssh streamify-airflow
   ```
-- Clone git repo and cd into Kafka folder
-  ```bash
-  git clone https://github.com/kyle1cooper/streamify.git && cd streamify/kafka
+- Clone git repo 
+  ```
+  git clone https://github.com/kyle1cooper/streamify.git
   ```
 - Install anaconda, docker & docker-compose.
   ```
@@ -163,6 +169,103 @@ This project is built in a manner that a basic level of knowledge for docker, te
   ```
 - Move the service account json file from local to the VM machine in `~/.google/credentials/` directory.  Make sure it is named as `google_credentials.json`  else the dags will fail!
 
+## Run the stack
+The stack needs to be run in the following order:
+1. Kafka
+2. Eventsim
+3. Spark
+4. Airflow
+
+### Kafka
+
+- Set the evironment variables
+- SSH into the kafka vm
+- Set environemental variables
+  ```
+  export KAFKA_ADDRESS=IP ADDRESS
+  ```
+
+  **Note**: You will have to setup these env vars every time you create a new shell session. Or if you stop/start your VM
+
+- Start Kafka 
+
+  ```
+  cd ~/streamify/kafka && \
+  docker-compose up 
+  ```
+
+  **Note**: Sometimes the `broker` & `schema-registry` containers die during startup. You should just stop all the containers with `docker-compose down` and then rerun `docker-compose up`.
+
+### Eventsim
+- SSH into the kafka VM.
+- Start Eventsim.
+
+  ```
+  bash ~/streamify/scripts/eventsim_startup.sh
+  ```
+
+This will start creating events for 1 Million users spread out from the current time to the next 24 hours. 
+The container will run in detached mode. Follow the logs to see the progress.
+
+- To follow the logs
+
+  ```
+  docker logs --follow million_events
+  ```
+- You should see four topics -
+
+  - listen_events
+  - page_view_events
+  - auth_events
+  - status_change_events
+  ![topics](../images/topics.png)
+
+### Spark
+- SSH into the **master node** Spark VM.
+- Set the evironment variables 
+  - External IP of the Kafka VM so that spark can connect to it
+  - Name of your GCS bucket. (What you gave during the terraform setup)
+  ```
+  export KAFKA_ADDRESS=IP.ADD.RE.SS
+  export GCP_GCS_BUCKET=bucket-name
+  ```
+
+  **Note**: You will have to setup these env vars every time you create a new shell session. Or if you stop/start your cluster
+
+- Start reading messages
+
+  ```
+  spark-submit \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 \
+  stream_all_events.py
+  ```
+
+- If all went right, you should see new `parquet` files in your bucket! That is Spark writing a file every two minutes for each topic.
+
+- Topics we are reading from
+
+  - listen_events
+  - page_view_events
+  - auth_events
+
+### Airflow
+- SSH into the airflow VM.
+
+  ```
+  ssh streamify-airflow
+  ```
+- Set the evironment variables (same as Terraform values)-
+  ```
+  export GCP_PROJECT_ID=project-id
+  export GCP_GCS_BUCKET=bucket-name
+  ```
+  **Note**: You will have to setup these env vars every time you create a new shell session.
+
+- Start Airflow. (This shall take a few good minutes, grab a coffee!)
+
+  ```
+  bash ~/streamify/scripts/airflow_startup.sh && cd ~/streamify/airflow
+  ```
 ##### DAGs
 
 The setup has two dags
@@ -178,109 +281,6 @@ The setup has two dags
     - Then we insert or append the hourly data, into the table.
     - And then, delete the external table.
     - Finally, run the dbt transformation, to create our dimensions and facts.
-
-
-## Run the stack
-The stack needs to be run in the following order:
-1. Kafka
-2. Eventsim
-3. Spark
-4. Airflow
-
-#### Kafka
-
-- Set the evironment variables
-  - ssh to the kafka vm
-  - Set environemental variables
-    ```
-    export KAFKA_ADDRESS=IP ADDRESS
-    ```
-
-     **Note**: You will have to setup these env vars every time you create a new shell session. Or if you stop/start your VM
-
-- Start Kafka 
-
-  ```
-  cd ~/streamify/kafka && \
-  docker-compose build && \
-  docker-compose up 
-  ```
-
-  **Note**: Sometimes the `broker` & `schema-registry` containers die during startup. You should just stop all the containers with `docker-compose down` and then rerun `docker-compose up`.
-
-#### Eventsim
-
-- Open another terminal session for the Kafka VM and start sending messages to your Kafka broker with Eventsim
-
-  ```bash
-  bash ~/streamify/scripts/eventsim_startup.sh
-  ```
-
-  This will start creating events for 1 Million users spread out from the current time to the next 24 hours. 
-  The container will run in detached mode. Follow the logs to see the progress.
-
-- To follow the logs
-
-  ```bash
-  docker logs --follow million_events
-  ```
-
-- The messages should start flowing-in in a few minutes.
-  
-- You should see four topics -
-
-  - listen_events
-  - page_view_events
-  - auth_events
-  - status_change_events
-  ![topics](../images/topics.png)
-
-#### Spark
-
-Set the evironment variables 
-  - External IP of the Kafka VM so that spark can connect to it
-  - Name of your GCS bucket. (What you gave during the terraform setup)
-
-    ```bash
-    export KAFKA_ADDRESS=IP.ADD.RE.SS
-    export GCP_GCS_BUCKET=bucket-name
-    ```
-
-     **Note**: You will have to setup these env vars every time you create a new shell session. Or if you stop/start your cluster
-
-- Start reading messages
-
-  ```bash
-  spark-submit \
-  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 \
-  stream_all_events.py
-  ```
-
-- If all went right, you should see new `parquet` files in your bucket! That is Spark writing a file every two minutes for each topic.
-
-- Topics we are reading from
-
-  - listen_events
-  - page_view_events
-  - auth_events
-
-#### Airflow
-
-Set the evironment variables (same as Terraform values)-
-  - GCP Project ID
-  - Cloud Storage Bucket Name
-
-    ```
-    export GCP_PROJECT_ID=project-id
-    export GCP_GCS_BUCKET=bucket-name
-    ```
-    **Note**: You will have to setup these env vars every time you create a new shell session.
-
-- Start Airflow. (This shall take a few good minutes, grab a coffee!)
-
-  ```bash
-  bash ~/streamify/scripts/airflow_startup.sh && cd ~/streamify/airflow
-  ```
 
 
 ### Debug
